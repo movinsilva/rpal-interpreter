@@ -142,7 +142,7 @@ public class AST{ //AST in left-child, right-sibling representation
       case REC: //standardization for REC
         childNode = node.getChild();
         if(childNode.getType()!=ASTNodeType.EQUAL)
-          throw new StandardizationException("REC: child is not EQUAL"); //safety
+          throw new StandardizationException("REC: child is not EQUAL"); //error handle
         ASTNode x = childNode.getChild();
         lambdaNode = new ASTNode();
         lambdaNode.setType(ASTNodeType.LAMBDA);
@@ -174,20 +174,17 @@ public class AST{ //AST in left-child, right-sibling representation
   
   private void populateCommaAndTauNode(ASTNode equalNode, ASTNode commaNode, ASTNode tauNode){
     if(equalNode.getType()!=ASTNodeType.EQUAL)
-      throw new StandardizationException("SIMULTDEF: one of the children is not EQUAL"); //safety
+      throw new StandardizationException("SIMULTDEF: one of the children is not EQUAL"); //error handle
     ASTNode x = equalNode.getChild();
     ASTNode e = x.getSibling();
     setChild(commaNode, x);
     setChild(tauNode, e);
   }
 
-  /**
-   * Either creates a new child of the parent or attaches the child node passed in
-   * as the last sibling of the parent's existing children 
-   * @param parentNode
-   * @param childNode
-   */
-  private void setChild(ASTNode parentNode, ASTNode childNode){
+
+  
+  private void setChild(ASTNode parentNode, ASTNode childNode){ // creates a new child of the parent or appends the child 
+                                                                //node passed in as the last sibling of the parent's existing children 
     if(parentNode.getChild()==null)
       parentNode.setChild(childNode);
     else{
@@ -211,11 +208,8 @@ public class AST{ //AST in left-child, right-sibling representation
     return lambdaNode;
   }
 
-  /**
-   * Creates delta structures from the standardized tree
-   * @return the first delta structure (&delta;0)
-   */
-  public Delta createDeltas(){
+ 
+  public Delta createDeltas(){ //delta structure creation
     pendingDeltaBodyQueue = new ArrayDeque<PendingDeltaBody>();
     deltaIndex = 0;
     currentDelta = createDelta(root);
@@ -224,7 +218,7 @@ public class AST{ //AST in left-child, right-sibling representation
   }
 
   private Delta createDelta(ASTNode startBodyNode){
-    //we'll create this delta's body later
+    //initialization
     PendingDeltaBody pendingDelta = new PendingDeltaBody();
     pendingDelta.startNode = startBodyNode;
     pendingDelta.body = new Stack<ASTNode>();
@@ -249,8 +243,8 @@ public class AST{ //AST in left-child, right-sibling representation
   }
   
   private void buildDeltaBody(ASTNode node, Stack<ASTNode> body){
-    if(node.getType()==ASTNodeType.LAMBDA){ //create a new delta
-      Delta d = createDelta(node.getChild().getSibling()); //the new delta's body starts at the right child of the lambda
+    if(node.getType()==ASTNodeType.LAMBDA){ //new delta creation
+      Delta d = createDelta(node.getChild().getSibling()); //new delta body
       if(node.getChild().getType()==ASTNodeType.COMMA){ //the left child of the lambda is the bound variable
         ASTNode commaNode = node.getChild();
         ASTNode childNode = commaNode.getChild();
@@ -261,7 +255,7 @@ public class AST{ //AST in left-child, right-sibling representation
       }
       else
         d.addBoundVars(node.getChild().getValue());
-      body.push(d); //add this new delta to the existing delta's body
+      body.push(d); //add this new delta to the delta's body
       return;
     }
     else if(node.getType()==ASTNodeType.CONDITIONAL){
@@ -271,8 +265,8 @@ public class AST{ //AST in left-child, right-sibling representation
       ASTNode thenNode = conditionNode.getSibling();
       ASTNode elseNode = thenNode.getSibling();
       
-      //Add a Beta node.
-      Beta betaNode = new Beta();
+      
+      Beta betaNode = new Beta(); //beta node addition
       
       buildDeltaBody(thenNode, betaNode.getThenBody());
       buildDeltaBody(elseNode, betaNode.getElseBody());
@@ -284,7 +278,7 @@ public class AST{ //AST in left-child, right-sibling representation
       return;
     }
     
-    //preOrder walk
+    //preorder traversal
     body.push(node);
     ASTNode childNode = node.getChild();
     while(childNode!=null){
@@ -302,3 +296,6 @@ public class AST{ //AST in left-child, right-sibling representation
     return standardized;
   }
 }
+
+
+

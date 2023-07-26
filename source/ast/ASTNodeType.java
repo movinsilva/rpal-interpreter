@@ -1,9 +1,11 @@
 package ast;
 
-/**
- * Type of abstract syntax tree node. As specified in the RPAL phrase structure grammar.
- * @author Raj
- */
+
+
+
+
+// RPAL structure grammar.
+
 public enum ASTNodeType{
   //General
   IDENTIFIER("<ID:%s>"),
@@ -61,7 +63,7 @@ public enum ASTNodeType{
   //Post-standardize
   YSTAR("<Y*>"),
   
-  //For program evaluation only. Will never appear in a standardized or non-standardized AST. 
+
   BETA(""),
   DELTA(""),
   ETA(""),
