@@ -32,7 +32,6 @@ SOURCEFILES := \
                scanner/Scanner.java \
                scanner/Token.java \
                scanner/TokenType.java \
-               driver/P1.java \
                driver/P2.java \
                rpal20.java \
 
