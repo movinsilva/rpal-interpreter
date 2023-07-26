@@ -11,69 +11,82 @@ public class CSEMachine {
   private Delta rootNodeDelta;
 
   public CSEMachine(AST ast) {
+    // check if the tree is standardize
     if (!ast.isStandardized())
-      throw new RuntimeException("AST has NOT been standardized!"); // should never happen
+      throw new RuntimeException("AST has NOT been standardized!");
+    // Initializes the result stack and the root delta node.
     rootNodeDelta = ast.createDeltas();
     rootNodeDelta.setLinkedEnv(new Environment()); // primitive environment
     resultStack = new Stack<ASTNode>();
   }
 
+  // Method to evaluate the entire program.
   public void evaluateProgram() {
     processControlStack(rootNodeDelta, rootNodeDelta.getLinkedEnv());
   }
 
-  private void processControlStack(Delta currentNodeDelta, Environment currentEnv) {
-    // create a new control stack and add all of the delta's body to it so that the
-    // delta's body isn't
-    // modified whenever the control stack is popped in all the functions below
+  // Method to process the control stack for a given delta node and environment.
+  private void processControlStack(Delta currentNodeDelta, Environment env) {
+
     Stack<ASTNode> controlStack = new Stack<ASTNode>();
+    // store the ASTNode elements to be processed during the evaluation.
     controlStack.addAll(currentNodeDelta.getBody());
 
+    // iterates over the control stack and processes each instruction one by one
+    // until all instructions are executed
     while (!controlStack.isEmpty())
-      processCurrentNode(currentNodeDelta, currentEnv, controlStack);
+      processCurrentNode(currentNodeDelta, env, controlStack);
   }
 
-  private void processCurrentNode(Delta currentNodeDelta, Environment currentEnv, Stack<ASTNode> currentControlStack) {
+  private void processCurrentNode(Delta currentNodeDelta, Environment env, Stack<ASTNode> currentControlStack) {
+    // retrieves the next instruction to be processed
     ASTNode node = currentControlStack.pop();
+
+    // check if a binary operation
     if (applyBinaryOperation(node))
       return;
+    // check if a unary operation
     else if (applyUnaryOperation(node))
       return;
+    // else handle other types of operations
     else {
       switch (node.getType()) {
         case IDENTIFIER:
-          handleIdentifiers(node, currentEnv);
+          handleIdentifiers(node, env);
           break;
         case NIL:
         case TAU:
+          // calls the createTuple method to create a new tuple node
           createTuple(node);
           break;
         case BETA:
+          // calls the handleBeta method to handle the beta reduction operation
           handleBeta((Beta) node, currentControlStack);
           break;
         case GAMMA:
-          applyGamma(currentNodeDelta, node, currentEnv, currentControlStack);
+          // calls the applyGamma method to handle the gamma reduction operation
+          applyGamma(currentNodeDelta, node, env, currentControlStack);
           break;
         case DELTA:
-          ((Delta) node).setLinkedEnv(currentEnv); // RULE 2
+          // Rule 2
+          // sets the linked environment of the Delta node to the current environment
+          // and pushes the Delta node back to the resultStack
+          ((Delta) node).setLinkedEnv(env);
           resultStack.push(node);
           break;
         default:
-          // Although we use ASTNodes, a CSEM will only ever see a subset of all possible
-          // ASTNodeTypes.
-          // These are the types that are NOT standardized away into lambdas and gammas.
-          // E.g. types
-          // such as LET, WHERE, WITHIN, SIMULTDEF etc will NEVER be encountered by the
-          // CSEM
           resultStack.push(node);
           break;
       }
     }
   }
 
-  // RULE 6
-  private boolean applyBinaryOperation(ASTNode rator) {
-    switch (rator.getType()) {
+  // Rule 6
+  // applying binary operations on operands based on the type of the opeoperator
+  private boolean applyBinaryOperation(ASTNode operator) {
+    switch (operator.getType()) {
+      // all below operators fall in to binary arithmetic operation type
+      // hence call the binaryArithmeticOp method
       case PLUS:
       case MINUS:
       case MULT:
@@ -83,109 +96,130 @@ public class CSEMachine {
       case LE:
       case GR:
       case GE:
-        binaryArithmeticOp(rator.getType());
+        binaryArithmeticOp(operator.getType());
         return true;
+      // calls the binaryLogicalEqNeOp method with the corresponding operator type
+      // to evaluate the equality or inequality
       case EQ:
       case NE:
-        binaryLogicalEqNeOp(rator.getType());
+        binaryLogicalEqNeOp(operator.getType());
         return true;
+      // calls the binaryLogicalOrAndOp method with the corresponding operator type
+      // to evaluate the logical OR and AND.
       case OR:
       case AND:
-        binaryLogicalOrAndOp(rator.getType());
+        binaryLogicalOrAndOp(operator.getType());
         return true;
+      // calls the augTuples method to perform tuple augmentation
       case AUG:
         augTuples();
         return true;
       default:
+        // not a binary operator supported by the CSEMachine
         return false;
     }
   }
 
+  // perform binary arithmetic operations
   private void binaryArithmeticOp(ASTNodeType type) {
-    ASTNode rand1 = resultStack.pop();
-    ASTNode rand2 = resultStack.pop();
-    if (rand1.getType() != ASTNodeType.INTEGER || rand2.getType() != ASTNodeType.INTEGER)
-      EvaluationError.printError(rand1.getSourceLineNumber(),
-          "Expected two integers; was given \"" + rand1.getValue() + "\", \"" + rand2.getValue() + "\"");
+    //
+    ASTNode operand1 = resultStack.pop();
+    ASTNode operand2 = resultStack.pop();
+    if (operand1.getType() != ASTNodeType.INTEGER || operand2.getType() != ASTNodeType.INTEGER)
+      EvaluationError.printError(operand1.getSourceLineNumber(),
+          "Expected two integers; was given \"" + operand1.getValue() + "\", \"" + operand2.getValue() + "\"");
 
     ASTNode result = new ASTNode();
     result.setType(ASTNodeType.INTEGER);
-
+    // enters to a switch statement based on the type of the arithmetic operation
     switch (type) {
       case PLUS:
-        result.setValue(Integer.toString(Integer.parseInt(rand1.getValue()) + Integer.parseInt(rand2.getValue())));
+        result
+            .setValue(Integer.toString(Integer.parseInt(operand1.getValue()) + Integer.parseInt(operand2.getValue())));
         break;
       case MINUS:
-        result.setValue(Integer.toString(Integer.parseInt(rand1.getValue()) - Integer.parseInt(rand2.getValue())));
+        result
+            .setValue(Integer.toString(Integer.parseInt(operand1.getValue()) - Integer.parseInt(operand2.getValue())));
         break;
       case MULT:
-        result.setValue(Integer.toString(Integer.parseInt(rand1.getValue()) * Integer.parseInt(rand2.getValue())));
+        result
+            .setValue(Integer.toString(Integer.parseInt(operand1.getValue()) * Integer.parseInt(operand2.getValue())));
         break;
       case DIV:
-        result.setValue(Integer.toString(Integer.parseInt(rand1.getValue()) / Integer.parseInt(rand2.getValue())));
+        result
+            .setValue(Integer.toString(Integer.parseInt(operand1.getValue()) / Integer.parseInt(operand2.getValue())));
         break;
       case EXP:
         result.setValue(
-            Integer.toString((int) Math.pow(Integer.parseInt(rand1.getValue()), Integer.parseInt(rand2.getValue()))));
+            Integer.toString(
+                (int) Math.pow(Integer.parseInt(operand1.getValue()), Integer.parseInt(operand2.getValue()))));
         break;
       case LS:
-        if (Integer.parseInt(rand1.getValue()) < Integer.parseInt(rand2.getValue()))
+        if (Integer.parseInt(operand1.getValue()) < Integer.parseInt(operand2.getValue()))
           pushTrueNode();
         else
           pushFalseNode();
         return;
       case LE:
-        if (Integer.parseInt(rand1.getValue()) <= Integer.parseInt(rand2.getValue()))
+        if (Integer.parseInt(operand1.getValue()) <= Integer.parseInt(operand2.getValue()))
           pushTrueNode();
         else
           pushFalseNode();
         return;
       case GR:
-        if (Integer.parseInt(rand1.getValue()) > Integer.parseInt(rand2.getValue()))
+        if (Integer.parseInt(operand1.getValue()) > Integer.parseInt(operand2.getValue()))
           pushTrueNode();
         else
           pushFalseNode();
         return;
       case GE:
-        if (Integer.parseInt(rand1.getValue()) >= Integer.parseInt(rand2.getValue()))
+        if (Integer.parseInt(operand1.getValue()) >= Integer.parseInt(operand2.getValue()))
           pushTrueNode();
         else
           pushFalseNode();
         return;
+      // If the type does not match any of the known arithmetic operations,
+      // the method exits the switch statement.
       default:
         break;
     }
+    // result node is pushed onto the resultStack
     resultStack.push(result);
   }
 
+  // performing binary logical equality and inequality
   private void binaryLogicalEqNeOp(ASTNodeType type) {
-    ASTNode rand1 = resultStack.pop();
-    ASTNode rand2 = resultStack.pop();
+    ASTNode operand1 = resultStack.pop();
+    ASTNode operand2 = resultStack.pop();
 
-    if (rand1.getType() == ASTNodeType.TRUE || rand1.getType() == ASTNodeType.FALSE) {
-      if (rand2.getType() != ASTNodeType.TRUE && rand2.getType() != ASTNodeType.FALSE)
-        EvaluationError.printError(rand1.getSourceLineNumber(),
-            "Cannot compare dissimilar types; was given \"" + rand1.getValue() + "\", \"" + rand2.getValue() + "\"");
-      compareTruthValues(rand1, rand2, type);
+    // checks the types of operand1 and operand2 before performing binary logical
+    // equality
+    if (operand1.getType() == ASTNodeType.TRUE || operand1.getType() == ASTNodeType.FALSE) {
+      if (operand2.getType() != ASTNodeType.TRUE && operand2.getType() != ASTNodeType.FALSE)
+        EvaluationError.printError(operand1.getSourceLineNumber(),
+            "Type error in the program");
+      compareTruthValues(operand1, operand2, type);
       return;
     }
 
-    if (rand1.getType() != rand2.getType())
-      EvaluationError.printError(rand1.getSourceLineNumber(),
-          "Cannot compare dissimilar types; was given \"" + rand1.getValue() + "\", \"" + rand2.getValue() + "\"");
+    if (operand1.getType() != operand2.getType())
+      EvaluationError.printError(operand1.getSourceLineNumber(),
+          "type error in the program");
 
-    if (rand1.getType() == ASTNodeType.STRING)
-      compareStrings(rand1, rand2, type);
-    else if (rand1.getType() == ASTNodeType.INTEGER)
-      compareIntegers(rand1, rand2, type);
+    // checks the specific type of operand1 to determine which
+    // comparison operation to perform
+    if (operand1.getType() == ASTNodeType.STRING)
+      compareStrings(operand1, operand2, type);
+    else if (operand1.getType() == ASTNodeType.INTEGER)
+      compareIntegers(operand1, operand2, type);
     else
-      EvaluationError.printError(rand1.getSourceLineNumber(),
-          "Don't know how to " + type + " \"" + rand1.getValue() + "\", \"" + rand2.getValue() + "\"");
+      EvaluationError.printError(operand1.getSourceLineNumber(),
+          " comparison operation is not supported for the given types");
 
   }
 
-  private void compareTruthValues(ASTNode rand1, ASTNode rand2, ASTNodeType type) {
-    if (rand1.getType() == rand2.getType())
+  private void compareTruthValues(ASTNode operand1, ASTNode operand2, ASTNodeType type) {
+    if (operand1.getType() == operand2.getType())
       if (type == ASTNodeType.EQ)
         pushTrueNode();
       else
@@ -196,8 +230,8 @@ public class CSEMachine {
       pushTrueNode();
   }
 
-  private void compareStrings(ASTNode rand1, ASTNode rand2, ASTNodeType type) {
-    if (rand1.getValue().equals(rand2.getValue()))
+  private void compareStrings(ASTNode operand1, ASTNode operand2, ASTNodeType type) {
+    if (operand1.getValue().equals(operand2.getValue()))
       if (type == ASTNodeType.EQ)
         pushTrueNode();
       else
@@ -208,8 +242,8 @@ public class CSEMachine {
       pushTrueNode();
   }
 
-  private void compareIntegers(ASTNode rand1, ASTNode rand2, ASTNodeType type) {
-    if (Integer.parseInt(rand1.getValue()) == Integer.parseInt(rand2.getValue()))
+  private void compareIntegers(ASTNode operand1, ASTNode operand2, ASTNodeType type) {
+    if (Integer.parseInt(operand1.getValue()) == Integer.parseInt(operand2.getValue()))
       if (type == ASTNodeType.EQ)
         pushTrueNode();
       else
@@ -221,27 +255,27 @@ public class CSEMachine {
   }
 
   private void binaryLogicalOrAndOp(ASTNodeType type) {
-    ASTNode rand1 = resultStack.pop();
-    ASTNode rand2 = resultStack.pop();
+    ASTNode operand1 = resultStack.pop();
+    ASTNode operand2 = resultStack.pop();
 
-    if ((rand1.getType() == ASTNodeType.TRUE || rand1.getType() == ASTNodeType.FALSE) &&
-        (rand2.getType() == ASTNodeType.TRUE || rand2.getType() == ASTNodeType.FALSE)) {
-      orAndTruthValues(rand1, rand2, type);
+    if ((operand1.getType() == ASTNodeType.TRUE || operand1.getType() == ASTNodeType.FALSE) &&
+        (operand2.getType() == ASTNodeType.TRUE || operand2.getType() == ASTNodeType.FALSE)) {
+      orAndTruthValues(operand1, operand2, type);
       return;
     }
 
-    EvaluationError.printError(rand1.getSourceLineNumber(),
-        "Don't know how to " + type + " \"" + rand1.getValue() + "\", \"" + rand2.getValue() + "\"");
+    EvaluationError.printError(operand1.getSourceLineNumber(),
+        "Don't know how to " + type + " \"" + operand1.getValue() + "\", \"" + operand2.getValue() + "\"");
   }
 
-  private void orAndTruthValues(ASTNode rand1, ASTNode rand2, ASTNodeType type) {
+  private void orAndTruthValues(ASTNode operand1, ASTNode operand2, ASTNodeType type) {
     if (type == ASTNodeType.OR) {
-      if (rand1.getType() == ASTNodeType.TRUE || rand2.getType() == ASTNodeType.TRUE)
+      if (operand1.getType() == ASTNodeType.TRUE || operand2.getType() == ASTNodeType.TRUE)
         pushTrueNode();
       else
         pushFalseNode();
     } else {
-      if (rand1.getType() == ASTNodeType.TRUE && rand2.getType() == ASTNodeType.TRUE)
+      if (operand1.getType() == ASTNodeType.TRUE && operand2.getType() == ASTNodeType.TRUE)
         pushTrueNode();
       else
         pushFalseNode();
@@ -249,29 +283,30 @@ public class CSEMachine {
   }
 
   private void augTuples() {
-    ASTNode rand1 = resultStack.pop();
-    ASTNode rand2 = resultStack.pop();
+    ASTNode operand1 = resultStack.pop();
+    ASTNode operand2 = resultStack.pop();
 
-    if (rand1.getType() != ASTNodeType.TUPLE)
-      EvaluationError.printError(rand1.getSourceLineNumber(),
-          "Cannot augment a non-tuple \"" + rand1.getValue() + "\"");
+    if (operand1.getType() != ASTNodeType.TUPLE)
+      EvaluationError.printError(operand1.getSourceLineNumber(),
+          "Cannot augment a non-tuple \"" + operand1.getValue() + "\"");
 
-    ASTNode childNode = rand1.getChild();
+    ASTNode childNode = operand1.getChild();
     if (childNode == null)
-      rand1.setChild(rand2);
+      operand1.setChild(operand2);
     else {
       while (childNode.getSibling() != null)
         childNode = childNode.getSibling();
-      childNode.setSibling(rand2);
+      childNode.setSibling(operand2);
     }
-    rand2.setSibling(null);
+    operand2.setSibling(null);
 
-    resultStack.push(rand1);
+    resultStack.push(operand1);
   }
 
   // RULE 7
-  private boolean applyUnaryOperation(ASTNode rator) {
-    switch (rator.getType()) {
+  // handling unary operations (NOT and NEG) on the result stack
+  private boolean applyUnaryOperation(ASTNode operator) {
+    switch (operator.getType()) {
       case NOT:
         not();
         return true;
@@ -287,20 +322,23 @@ public class CSEMachine {
     ASTNode rand = resultStack.pop();
     if (rand.getType() != ASTNodeType.TRUE && rand.getType() != ASTNodeType.FALSE)
       EvaluationError.printError(rand.getSourceLineNumber(),
-          "Expecting a truthvalue; was given \"" + rand.getValue() + "\"");
+          "Not given a truth value");
 
+    // Negate the truth value and push the result back to the resultStack.
     if (rand.getType() == ASTNodeType.TRUE)
       pushFalseNode();
     else
       pushTrueNode();
   }
 
+  // handles the negation of integers
   private void neg() {
     ASTNode rand = resultStack.pop();
     if (rand.getType() != ASTNodeType.INTEGER)
       EvaluationError.printError(rand.getSourceLineNumber(),
-          "Expecting a truthvalue; was given \"" + rand.getValue() + "\"");
+          "An integer was expected");
 
+    // Negate the integer value and push the result back to the resultStack.
     ASTNode result = new ASTNode();
     result.setType(ASTNodeType.INTEGER);
     result.setValue(Integer.toString(-1 * Integer.parseInt(rand.getValue())));
@@ -308,21 +346,15 @@ public class CSEMachine {
   }
 
   // RULE 3
-  private void applyGamma(Delta currentDelta, ASTNode node, Environment currentEnv,
+  // handles the reduction of beta and delta nodes
+  private void applyGamma(Delta currentDelta, ASTNode node, Environment env,
       Stack<ASTNode> currentControlStack) {
-    ASTNode rator = resultStack.pop();
+    ASTNode operator = resultStack.pop();
     ASTNode rand = resultStack.pop();
 
-    if (rator.getType() == ASTNodeType.DELTA) {
-      Delta nextDelta = (Delta) rator;
+    if (operator.getType() == ASTNodeType.DELTA) {
+      Delta nextDelta = (Delta) operator;
 
-      // Delta has a link to the environment in effect when it is pushed on to the
-      // value stack (search
-      // for 'RULE 2' in this file to see where it's done)
-      // We construct a new environment here that will contain all the bindings
-      // (single or multiple)
-      // required by this Delta. This new environment will link back to the
-      // environment carried by the Delta.
       Environment newEnv = new Environment();
       newEnv.setParent(nextDelta.getLinkedEnv());
 
@@ -345,7 +377,7 @@ public class CSEMachine {
 
       processControlStack(nextDelta, newEnv);
       return;
-    } else if (rator.getType() == ASTNodeType.YSTAR) {
+    } else if (operator.getType() == ASTNodeType.YSTAR) {
       // RULE 12
       if (rand.getType() != ASTNodeType.DELTA)
         EvaluationError.printError(rand.getSourceLineNumber(),
@@ -355,28 +387,28 @@ public class CSEMachine {
       etaNode.setDelta((Delta) rand);
       resultStack.push(etaNode);
       return;
-    } else if (rator.getType() == ASTNodeType.ETA) {
+    } else if (operator.getType() == ASTNodeType.ETA) {
       // RULE 13
       // push back the rand, the eta and then the delta it contains
       resultStack.push(rand);
-      resultStack.push(rator);
-      resultStack.push(((Eta) rator).getDelta());
+      resultStack.push(operator);
+      resultStack.push(((Eta) operator).getDelta());
       // push back two gammas (one for the eta and one for the delta)
       currentControlStack.push(node);
       currentControlStack.push(node);
       return;
-    } else if (rator.getType() == ASTNodeType.TUPLE) {
-      tupleSelection((Tuple) rator, rand);
+    } else if (operator.getType() == ASTNodeType.TUPLE) {
+      tupleSelection((Tuple) operator, rand);
       return;
-    } else if (evaluateReservedIdentifiers(rator, rand, currentControlStack))
+    } else if (evaluateReservedIdentifiers(operator, rand, currentControlStack))
       return;
     else
-      EvaluationError.printError(rator.getSourceLineNumber(),
-          "Don't know how to evaluate \"" + rator.getValue() + "\"");
+      EvaluationError.printError(operator.getSourceLineNumber(),
+          "Don't know how to evaluate \"" + operator.getValue() + "\"");
   }
 
-  private boolean evaluateReservedIdentifiers(ASTNode rator, ASTNode rand, Stack<ASTNode> currentControlStack) {
-    switch (rator.getValue()) {
+  private boolean evaluateReservedIdentifiers(ASTNode operator, ASTNode rand, Stack<ASTNode> currentControlStack) {
+    switch (operator.getValue()) {
       case "Isinteger":
         checkTypeAndPushTrueOrFalse(rand, ASTNodeType.INTEGER);
         return true;
@@ -480,16 +512,16 @@ public class CSEMachine {
     resultStack.push(rand);
   }
 
-  private void conc(ASTNode rand1, Stack<ASTNode> currentControlStack) {
+  private void conc(ASTNode operand1, Stack<ASTNode> currentControlStack) {
     currentControlStack.pop();
-    ASTNode rand2 = resultStack.pop();
-    if (rand1.getType() != ASTNodeType.STRING || rand2.getType() != ASTNodeType.STRING)
-      EvaluationError.printError(rand1.getSourceLineNumber(),
-          "Expected two strings; was given \"" + rand1.getValue() + "\", \"" + rand2.getValue() + "\"");
+    ASTNode operand2 = resultStack.pop();
+    if (operand1.getType() != ASTNodeType.STRING || operand2.getType() != ASTNodeType.STRING)
+      EvaluationError.printError(operand1.getSourceLineNumber(),
+          "Expected two strings; was given \"" + operand1.getValue() + "\", \"" + operand2.getValue() + "\"");
 
     ASTNode result = new ASTNode();
     result.setType(ASTNodeType.STRING);
-    result.setValue(rand1.getValue() + rand2.getValue());
+    result.setValue(operand1.getValue() + operand2.getValue());
 
     resultStack.push(result);
   }
@@ -525,12 +557,12 @@ public class CSEMachine {
   }
 
   // RULE 10
-  private void tupleSelection(Tuple rator, ASTNode rand) {
+  private void tupleSelection(Tuple operator, ASTNode rand) {
     if (rand.getType() != ASTNodeType.INTEGER)
       EvaluationError.printError(rand.getSourceLineNumber(),
           "Non-integer tuple selection with \"" + rand.getValue() + "\"");
 
-    ASTNode result = getNthTupleChild(rator, Integer.parseInt(rand.getValue()));
+    ASTNode result = getNthTupleChild(operator, Integer.parseInt(rand.getValue()));
     if (result == null)
       EvaluationError.printError(rand.getSourceLineNumber(),
           "Tuple selection index " + rand.getValue() + " out of bounds");
@@ -555,9 +587,9 @@ public class CSEMachine {
     return childNode;
   }
 
-  private void handleIdentifiers(ASTNode node, Environment currentEnv) {
-    if (currentEnv.lookup(node.getValue()) != null) // RULE 1
-      resultStack.push(currentEnv.lookup(node.getValue()));
+  private void handleIdentifiers(ASTNode node, Environment env) {
+    if (env.lookup(node.getValue()) != null) // RULE 1
+      resultStack.push(env.lookup(node.getValue()));
     else if (isReservedIdentifier(node.getValue()))
       resultStack.push(node);
     else
@@ -566,15 +598,15 @@ public class CSEMachine {
 
   // RULE 9
   private void createTuple(ASTNode node) {
-    int numChildren = getNumChildren(node);
+    int childCount = getNumChildren(node);
     Tuple tupleNode = new Tuple();
-    if (numChildren == 0) {
+    if (childCount == 0) {
       resultStack.push(tupleNode);
       return;
     }
 
     ASTNode childNode = null, tempNode = null;
-    for (int i = 0; i < numChildren; ++i) {
+    for (int i = 0; i < childCount; ++i) {
       if (childNode == null)
         childNode = resultStack.pop();
       else if (tempNode == null) {
@@ -605,13 +637,13 @@ public class CSEMachine {
   }
 
   private int getNumChildren(ASTNode node) {
-    int numChildren = 0;
+    int childCount = 0;
     ASTNode childNode = node.getChild();
     while (childNode != null) {
-      numChildren++;
+      childCount++;
       childNode = childNode.getSibling();
     }
-    return numChildren;
+    return childCount;
   }
 
   private void printNodeValue(ASTNode rand) {
