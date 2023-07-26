@@ -17,7 +17,7 @@ SOURCEFILES := \
                ast/AST.java \
                ast/ASTNode.java \
                ast/ASTNodeType.java \
-               ast/StandardizeException.java \
+               ast/StandardizationException.java \
                csem/Beta.java \
                csem/CSEMachine.java \
                csem/Delta.java \

@@ -49,18 +49,13 @@ public class AST{ //AST in left-child, right-sibling representation
       System.out.println(printPrefix+node.getType().getPrintName());
   }
 
-  /**
-   * Standardize this tree
-   */
+  //standardize the current tree
   public void standardize(){
     standardize(root);
     standardized = true;
   }
 
-  /**
-   * Standardize the tree bottom-up
-   * @param node node to standardize
-   */
+  // bottom up standardization
   private void standardize(ASTNode node){
     //standardize the children first
     if(node.getChild()!=null){
@@ -71,14 +66,11 @@ public class AST{ //AST in left-child, right-sibling representation
       }
     }
 
-    //all children standardized. now standardize this node
+    //standardizing the node after all children are standardized
+
+
     switch(node.getType()){
-      case LET:
-        //       LET              GAMMA
-        //     /     \           /     \
-        //    EQUAL   P   ->   LAMBDA   E
-        //   /   \             /    \
-        //  X     E           X      P
+      case LET:    //standardization for LET
         ASTNode equalNode = node.getChild();
         if(equalNode.getType()!=ASTNodeType.EQUAL)
           throw new StandardizationException("LET/WHERE: left child is not EQUAL"); //safety
@@ -88,13 +80,7 @@ public class AST{ //AST in left-child, right-sibling representation
         equalNode.setType(ASTNodeType.LAMBDA);
         node.setType(ASTNodeType.GAMMA);
         break;
-      case WHERE:
-        //make this is a LET node and standardize that
-        //       WHERE               LET
-        //       /   \             /     \
-        //      P    EQUAL   ->  EQUAL   P
-        //           /   \       /   \
-        //          X     E     X     E
+      case WHERE: //standardization for WHERE
         equalNode = node.getChild().getSibling();
         node.getChild().setSibling(null);
         equalNode.setSibling(node.getChild());
@@ -102,22 +88,12 @@ public class AST{ //AST in left-child, right-sibling representation
         node.setType(ASTNodeType.LET);
         standardize(node);
         break;
-      case FCNFORM:
-        //       FCN_FORM                EQUAL
-        //       /   |   \              /    \
-        //      P    V+   E    ->      P     +LAMBDA
-        //                                    /     \
-        //                                    V     .E
+      case FCNFORM: //standardization for FCNFORM
         ASTNode childSibling = node.getChild().getSibling();
         node.getChild().setSibling(constructLambdaChain(childSibling));
         node.setType(ASTNodeType.EQUAL);
         break;
-      case AT:
-        //         AT              GAMMA
-        //       / | \    ->       /    \
-        //      E1 N E2          GAMMA   E2
-        //                       /    \
-        //                      N     E1
+      case AT: //standardization for AT
         ASTNode e1 = node.getChild();
         ASTNode n = e1.getSibling();
         ASTNode e2 = n.getSibling();
@@ -130,16 +106,9 @@ public class AST{ //AST in left-child, right-sibling representation
         node.setChild(gammaNode);
         node.setType(ASTNodeType.GAMMA);
         break;
-      case WITHIN:
-        //           WITHIN                  EQUAL
-        //          /      \                /     \
-        //        EQUAL   EQUAL    ->      X2     GAMMA
-        //       /    \   /    \                  /    \
-        //      X1    E1 X2    E2               LAMBDA  E1
-        //                                      /    \
-        //                                     X1    E2
+      case WITHIN: //standardization for WITHIN
         if(node.getChild().getType()!=ASTNodeType.EQUAL || node.getChild().getSibling().getType()!=ASTNodeType.EQUAL)
-          throw new StandardizationException("WITHIN: one of the children is not EQUAL"); //safety
+          throw new StandardizationException("WITHIN: one of the children is not EQUAL"); //error handle
         ASTNode x1 = node.getChild().getChild();
         e1 = x1.getSibling();
         ASTNode x2 = node.getChild().getSibling().getChild();
@@ -156,12 +125,7 @@ public class AST{ //AST in left-child, right-sibling representation
         node.setChild(x2);
         node.setType(ASTNodeType.EQUAL);
         break;
-      case SIMULTDEF:
-        //         SIMULTDEF            EQUAL
-        //             |               /     \
-        //           EQUAL++  ->     COMMA   TAU
-        //           /   \             |      |
-        //          X     E           X++    E++
+      case SIMULTDEF: //standardization for SIMULTDEF
         ASTNode commaNode = new ASTNode();
         commaNode.setType(ASTNodeType.COMMA);
         ASTNode tauNode = new ASTNode();
@@ -175,14 +139,7 @@ public class AST{ //AST in left-child, right-sibling representation
         node.setChild(commaNode);
         node.setType(ASTNodeType.EQUAL);
         break;
-      case REC:
-        //        REC                 EQUAL
-        //         |                 /     \
-        //       EQUAL     ->       X     GAMMA
-        //      /     \                   /    \
-        //     X       E                YSTAR  LAMBDA
-        //                                     /     \
-        //                                    X       E
+      case REC: //standardization for REC
         childNode = node.getChild();
         if(childNode.getType()!=ASTNodeType.EQUAL)
           throw new StandardizationException("REC: child is not EQUAL"); //safety
@@ -204,42 +161,17 @@ public class AST{ //AST in left-child, right-sibling representation
         node.setChild(xWithSiblingGamma);
         node.setType(ASTNodeType.EQUAL);
         break;
-      case LAMBDA:
-        //     LAMBDA        LAMBDA
-        //      /   \   ->   /    \
-        //     V++   E      V     .E
+      case LAMBDA: //standardization for LAMBDA
+
         childSibling = node.getChild().getSibling();
         node.getChild().setSibling(constructLambdaChain(childSibling));
         break;
-      default:
-        // Node types we do NOT standardize:
-        // CSE Optimization Rule 6 (binops)
-        // OR
-        // AND
-        // PLUS
-        // MINUS
-        // MULT
-        // DIV
-        // EXP
-        // GR
-        // GE
-        // LS
-        // LE
-        // EQ
-        // NE
-        // CSE Optimization Rule 7 (unops)
-        // NOT
-        // NEG
-        // CSE Optimization Rule 8 (conditionals)
-        // CONDITIONAL
-        // CSE Optimization Rule 9, 10 (tuples)
-        // TAU
-        // CSE Optimization Rule 11 (n-ary functions)
-        // COMMA
+      default:   // Node types we do NOT standardize will be ignored: OR AND + - * / EXP GR GE LS LE EQ NE NOT NEG CONDITIONAL TAU COMMA
         break;
     }
   }
 
+  
   private void populateCommaAndTauNode(ASTNode equalNode, ASTNode commaNode, ASTNode tauNode){
     if(equalNode.getType()!=ASTNodeType.EQUAL)
       throw new StandardizationException("SIMULTDEF: one of the children is not EQUAL"); //safety
