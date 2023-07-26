@@ -1,11 +1,10 @@
 package scanner;
 
-/**
- * Token given by the scanner to the parser.
- * A token has a type and a value. The value is unimportant
- * for certain kinds of tokens (e.g. DELETE, L_PAREN tokens).
- * @author Raj
- *
+/*
+ * The Token class represents a token produced by the scanner and provided to the parser during the compilation process.
+ * Each token encapsulates two main attributes: its type and its value.
+ * While the token's type is essential for all cases, the value may be inconsequential for certain kinds of tokens,
+ * such as DELETE and L_PAREN tokens. 
  */
 public class Token{
   private TokenType type;
