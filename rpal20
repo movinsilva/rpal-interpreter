@@ -1,0 +1,14 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PWD="$( pwd )"
+
+#Compile source if necessary
+if [ ! -f $DIR/"P2.class" ]
+then
+  cd $DIR
+  make
+  cd $PWD
+fi;
+
+java -cp $DIR driver.P2 $1 $2 $3
