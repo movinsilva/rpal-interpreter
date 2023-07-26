@@ -7,64 +7,59 @@ import java.util.Stack;
 import ast.ASTNode;
 import ast.ASTNodeType;
 
-/**
- * Represents a lambda closure.
- * @author Raj
- */
-public class Delta extends ASTNode{
+public class Delta extends ASTNode {
   private List<String> boundVars;
-  private Environment linkedEnv; //environment in effect when this Delta was pushed on to the value stack
+  private Environment linkedEnv; 
   private Stack<ASTNode> body;
   private int index;
-  
-  public Delta(){
+
+  public Delta() {
     setType(ASTNodeType.DELTA);
     boundVars = new ArrayList<String>();
   }
-  
-  public Delta accept(NodeCopier nodeCopier){
+
+  public Delta accept(NodeCopier nodeCopier) {
     return nodeCopier.copy(this);
   }
-  
-  //used if the program evaluation results in a partial application
+
   @Override
-  public String getValue(){
-    return "[lambda closure: "+boundVars.get(0)+": "+index+"]";
+  public String getValue() {
+    return "[lambda closure: " + boundVars.get(0) + ": " + index + "]";
   }
 
-  public List<String> getBoundVars(){
+  public List<String> getBoundVars() {
     return boundVars;
   }
-  
-  public void addBoundVars(String boundVar){
+
+  public void addBoundVars(String boundVar) {
     boundVars.add(boundVar);
   }
-  
-  public void setBoundVars(List<String> boundVars){
+
+  public void setBoundVars(List<String> boundVars) {
     this.boundVars = boundVars;
   }
-  
-  public Stack<ASTNode> getBody(){
+
+  public Stack<ASTNode> getBody() {
     return body;
   }
-  
-  public void setBody(Stack<ASTNode> body){
+
+  public void setBody(Stack<ASTNode> body) {
     this.body = body;
   }
-  
-  public int getIndex(){
+
+  public int getIndex() {
     return index;
   }
 
-  public void setIndex(int index){
+  public void setIndex(int index) {
     this.index = index;
   }
 
-  public Environment getLinkedEnv(){
+  public Environment getLinkedEnv() {
     return linkedEnv;
   }
 
-  public void setLinkedEnv(Environment linkedEnv){
+  public void setLinkedEnv(Environment linkedEnv) {
     this.linkedEnv = linkedEnv;
   }
 }
