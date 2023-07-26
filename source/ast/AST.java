@@ -4,10 +4,10 @@ import java.util.Stack;
 import csem.Beta;
 import csem.Delta;
 
-/* AST in left-child, right-sibling representation */
 
 
-public class AST{
+
+public class AST{ //AST in left-child, right-sibling representation 
   private ASTNode root;
   private boolean standardized;
   private Delta currentDelta;
@@ -15,24 +15,27 @@ public class AST{
   private ArrayDeque<PendingDeltaBody> pendingDeltaBodyQueue;
   private int deltaIndex;
 
+
   public AST(ASTNode node){
     this.root = node;
   }
 
-  /**
-   * Prints the tree nodes in pre-order fashion.
-   */
-  public void print(){
-    preOrderPrint(root,"");
+
+  public void print(){    //preorder traversal
+    PreorderTraversal(root,"");
   }
 
-  private void preOrderPrint(ASTNode node, String printPrefix){
+
+
+
+
+  private void PreorderTraversal(ASTNode node, String printPrefix){
     if(node==null)
       return;
 
     printASTNodeDetails(node, printPrefix);
-    preOrderPrint(node.getChild(),printPrefix+".");
-    preOrderPrint(node.getSibling(),printPrefix);
+    PreorderTraversal(node.getChild(),printPrefix+".");
+    PreorderTraversal(node.getSibling(),printPrefix);
   }
 
   private void printASTNodeDetails(ASTNode node, String printPrefix){
@@ -78,7 +81,7 @@ public class AST{
         //  X     E           X      P
         ASTNode equalNode = node.getChild();
         if(equalNode.getType()!=ASTNodeType.EQUAL)
-          throw new StandardizeException("LET/WHERE: left child is not EQUAL"); //safety
+          throw new StandardizationException("LET/WHERE: left child is not EQUAL"); //safety
         ASTNode e = equalNode.getChild().getSibling();
         equalNode.getChild().setSibling(equalNode.getSibling());
         equalNode.setSibling(e);
@@ -136,7 +139,7 @@ public class AST{
         //                                      /    \
         //                                     X1    E2
         if(node.getChild().getType()!=ASTNodeType.EQUAL || node.getChild().getSibling().getType()!=ASTNodeType.EQUAL)
-          throw new StandardizeException("WITHIN: one of the children is not EQUAL"); //safety
+          throw new StandardizationException("WITHIN: one of the children is not EQUAL"); //safety
         ASTNode x1 = node.getChild().getChild();
         e1 = x1.getSibling();
         ASTNode x2 = node.getChild().getSibling().getChild();
@@ -182,7 +185,7 @@ public class AST{
         //                                    X       E
         childNode = node.getChild();
         if(childNode.getType()!=ASTNodeType.EQUAL)
-          throw new StandardizeException("REC: child is not EQUAL"); //safety
+          throw new StandardizationException("REC: child is not EQUAL"); //safety
         ASTNode x = childNode.getChild();
         lambdaNode = new ASTNode();
         lambdaNode.setType(ASTNodeType.LAMBDA);
@@ -239,7 +242,7 @@ public class AST{
 
   private void populateCommaAndTauNode(ASTNode equalNode, ASTNode commaNode, ASTNode tauNode){
     if(equalNode.getType()!=ASTNodeType.EQUAL)
-      throw new StandardizeException("SIMULTDEF: one of the children is not EQUAL"); //safety
+      throw new StandardizationException("SIMULTDEF: one of the children is not EQUAL"); //safety
     ASTNode x = equalNode.getChild();
     ASTNode e = x.getSibling();
     setChild(commaNode, x);
