@@ -1,21 +1,18 @@
 package ast;
-
 import java.util.ArrayDeque;
 import java.util.Stack;
-
 import csem.Beta;
 import csem.Delta;
 
-/*
- * Abstract Syntax Tree: The nodes use a first-child
- * next-sibling representation.
- */
+/* AST in left-child, right-sibling representation */
+
+
 public class AST{
   private ASTNode root;
-  private ArrayDeque<PendingDeltaBody> pendingDeltaBodyQueue;
   private boolean standardized;
   private Delta currentDelta;
   private Delta rootDelta;
+  private ArrayDeque<PendingDeltaBody> pendingDeltaBodyQueue;
   private int deltaIndex;
 
   public AST(ASTNode node){
