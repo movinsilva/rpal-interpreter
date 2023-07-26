@@ -4,7 +4,6 @@ import csem.NodeCopier;
 
 /**
  * Abstract Syntax Tree node. Uses a first-child, next-sibling representation.
- * @author Raj
  */
 public class ASTNode{
   private ASTNodeType type;
