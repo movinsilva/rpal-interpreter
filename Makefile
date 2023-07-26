@@ -34,6 +34,7 @@ SOURCEFILES := \
                scanner/TokenType.java \
                driver/P1.java \
                driver/P2.java \
+               rpal20.java \
 
 all: dirs classestocompile
 
@@ -78,4 +79,6 @@ clean:
 	@rm -f P2.class
 	@rm -f *.jar
 	@rm -fr diffresult
+	@rm -rf *.class
+	@rm -rf output.*
 #@rm -fr $(CLASSDIR) #need only this when CLASSDIR = class (and NOT pwd)
